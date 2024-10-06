@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <!-- JSON Console Appender -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <JsonLayout compact="true" eventEol="true" includeTimeMillis="true" objectMessageAsJsonObject="true" properties="true" />
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <!-- Root logger -->
+        <Root level="info">
+            <AppenderRef ref="Console" />
+        </Root>
+
+        <!-- Example of setting logger level for a specific package -->
+        <Logger name="net.prasenjit" level="debug" additivity="false">
+            <AppenderRef ref="Console" />
+        </Logger>
+    </Loggers>
+</Configuration>

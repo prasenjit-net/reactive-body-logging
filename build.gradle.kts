@@ -18,8 +18,14 @@ repositories {
 }
 
 dependencies {
+    // log4j2
+    implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+
+    //google autoservice
+//    annotationProcessor("com.google.auto.service:auto-service:1.1.1")
+//    compileOnly("com.google.auto.service:auto-service:1.1.1")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")
@@ -32,4 +38,11 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// exclude logback
+configurations {
+    all {
+        exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
+    }
 }

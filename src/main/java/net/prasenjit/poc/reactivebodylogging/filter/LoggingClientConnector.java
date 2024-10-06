@@ -3,7 +3,10 @@ package net.prasenjit.poc.reactivebodylogging.filter;
 import lombok.extern.log4j.Log4j2;
 import org.reactivestreams.Publisher;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.reactive.*;
 import org.springframework.lang.NonNull;
 import reactor.core.publisher.Flux;
@@ -28,36 +31,51 @@ public class LoggingClientConnector implements ClientHttpConnector {
     }
 
     private static class LoggingClientHttpRequest extends ClientHttpRequestDecorator {
+        private final HttpContentEvent.HttpContentEventBuilder eventBuilder;
+
         public LoggingClientHttpRequest(ClientHttpRequest delegate) {
             super(delegate);
+            HttpMethod method = delegate.getMethod();
+            String uri = delegate.getURI().toString();
+            eventBuilder = HttpContentEvent.builder()
+                    .method(method)
+                    .uri(uri)
+                    .headers(delegate.getHeaders());
         }
 
         @Override
         @NonNull
         public Mono<Void> writeWith(@NonNull Publisher<? extends DataBuffer> body) {
-            Flux<? extends DataBuffer> buffer = Flux.from(body).doOnNext(dataBuffer -> {
+            Mono<DataBuffer> dataBufferMono = DataBufferUtils.join(body).doOnNext(dataBuffer -> {
                 String bodyString = dataBuffer.toString(StandardCharsets.UTF_8);
-                log.info("Request body: {}", bodyString);
+                HttpContentEvent event = eventBuilder.body(bodyString).build();
+                log.info(event);
             });
 
-            return super.writeWith(buffer);
+            return super.writeWith(dataBufferMono);
         }
 
     }
 
     private static class LoggingClientHttpResponse extends ClientHttpResponseDecorator {
+        private final HttpContentEvent.HttpContentEventBuilder eventBuilder;
+
         public LoggingClientHttpResponse(ClientHttpResponse delegate) {
             super(delegate);
+            HttpStatusCode statusCode = delegate.getStatusCode();
+            eventBuilder = HttpContentEvent.builder()
+                    .status(HttpStatus.valueOf(statusCode.value()))
+                    .headers(delegate.getHeaders());
         }
 
         @Override
         @NonNull
         public Flux<DataBuffer> getBody() {
-            return super.getBody()
-                    .doOnNext(dataBuffer -> {
-                        String bodyString = dataBuffer.toString(StandardCharsets.UTF_8);
-                        log.info("Response body: {}", bodyString);
-                    });
+            return DataBufferUtils.join(super.getBody()).doOnNext(dataBuffer -> {
+                String bodyString = dataBuffer.toString(StandardCharsets.UTF_8);
+                HttpContentEvent event = eventBuilder.body(bodyString).build();
+                log.info(event);
+            }).flux();
         }
     }
 }
